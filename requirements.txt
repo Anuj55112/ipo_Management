@@ -1,0 +1,19 @@
+# System & Environment Requirements
+Node.js >= 18.0.0
+npm >= 9.0.0
+PostgreSQL >= 14.0
+
+# Node.js Core Dependencies (installed via package.json / npm install)
+next == 16.2.9
+react == 19.2.4
+react-dom == 19.2.4
+prisma == 7.8.0
+@prisma/client == 7.8.0
+pg == 8.22.0
+@prisma/adapter-pg == 7.8.0
+recharts == 3.9.0
+xlsx == 0.18.5
+jspdf == 4.2.1
+tailwindcss == 4
+lucide-react == 1.21.0
+typescript == 5
