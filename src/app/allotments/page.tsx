@@ -104,7 +104,10 @@ export default function AllotmentsPage() {
   const [modalError, setModalError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
-
+  // API registrar auto-checker states
+  const [checkingAPI, setCheckingAPI] = useState(false);
+  const [apiLogs, setApiLogs] = useState<string[]>([]);
+  const [showApiTerminal, setShowApiTerminal] = useState(false);
 
   // CSV Bulk Import State
   const [selectedIpoId, setSelectedIpoId] = useState("");
@@ -297,7 +300,44 @@ export default function AllotmentsPage() {
     }
   };
 
-  // Automated checker removed (manual entry prioritized)
+  // Server-side Auto-Check trigger
+  const runApiChecker = async () => {
+    setCheckingAPI(true);
+    setShowApiTerminal(true);
+    setApiLogs(["Initializing server-side allotment query..."]);
+
+    try {
+      const response = await fetch("/api/allotments/auto-check", { method: "POST" });
+      if (!response.ok) {
+        throw new Error(`Server returned code ${response.status}`);
+      }
+
+      const json = await response.json();
+      const logs = [
+        `[System] ${json.message}`,
+        `[Sync] Checked: ${json.checked} pending applications.`,
+        `[Sync] Resolved and updated: ${json.resolved} records.`
+      ];
+
+      if (json.details && json.details.length > 0) {
+        logs.push("-------------------------------------------");
+        logs.push("Resolved Applications Details:");
+        json.details.forEach((item: any) => {
+          logs.push(`- ${item.account} (${item.pan}): ${item.status === 'ALLOTTED' ? 'Allotted ' + item.sharesAllotted + ' sh.' : 'Not Allotted (Refund)'} via ${item.source}`);
+        });
+      } else {
+        logs.push("[Sync] No pending applications could be resolved at this time.");
+      }
+
+      setApiLogs(logs);
+      fetchApplications();
+    } catch (error: any) {
+      console.error(error);
+      setApiLogs((prev) => [...prev, `[Error] Connection or internal database issue: ${error.message || error}`]);
+    } finally {
+      setCheckingAPI(false);
+    }
+  };
 
   // CSV file parser and preview generator
   const handleCsvFileSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -514,6 +554,43 @@ export default function AllotmentsPage() {
       {/* ======================================================== */}
       {activeTab === "center" && (
         <div className="space-y-6">
+          {/* API auto integration checker card */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-primary animate-pulse" />
+                  <span>Auto Allotment Checking Service</span>
+                </h3>
+                <p className="text-xs text-muted max-w-2xl leading-relaxed">
+                  Queries pending applications against registrar databases (Link Intime & KFintech) via secure server-side API query integrations.
+                </p>
+              </div>
+              <button
+                onClick={runApiChecker}
+                disabled={checkingAPI}
+                className="flex items-center justify-center gap-2 rounded-xl bg-primary-hover hover:bg-primary px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 shadow-md shadow-primary/10"
+              >
+                {checkingAPI ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                <span>Run Registrar Checker</span>
+              </button>
+            </div>
+
+            {showApiTerminal && (
+              <div className="mt-4 rounded-xl border border-border bg-input/50 p-4 font-mono text-xs text-muted max-h-48 overflow-y-auto space-y-1 relative">
+                <button
+                  onClick={() => setShowApiTerminal(false)}
+                  className="absolute top-2 right-2 rounded p-1 hover:bg-border"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                {apiLogs.map((log, index) => (
+                  <p key={index}>{log}</p>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Checklist table */}
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="px-6 py-4 border-b border-border bg-input/20">
